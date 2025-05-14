@@ -10,6 +10,9 @@ export class PostRepository {
   ) {}
 
   async createPost(data: any) {
+    if (!data._id) {
+      data._id = Math.random().toString(36).substring(2, 15);
+    }
     const post = new this.postModel(data);
     return post.save();
   }
@@ -24,5 +27,9 @@ export class PostRepository {
 
   async deletePost(postId: string) {
     return this.postModel.findByIdAndDelete(postId).exec();
+  }
+
+  async findPostById(postId: string) {
+    return this.postModel.findOne({ _id: postId }).exec();
   }
 }

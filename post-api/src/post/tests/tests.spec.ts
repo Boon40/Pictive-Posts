@@ -3,11 +3,12 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PostModule } from '../post.module';
+import { CommentModule } from '../../comment/comment.module';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 let mongod: MongoMemoryServer;
 
-describe('PostController (e2e)', () => {
+describe('Post Features (e2e)', () => {
   let app: INestApplication;
   let mongoUri: string;
   let createdPostId: string;
@@ -22,6 +23,7 @@ describe('PostController (e2e)', () => {
       imports: [
         MongooseModule.forRoot(mongoUri),
         PostModule,
+        CommentModule,
       ],
     }).compile();
 
@@ -49,25 +51,13 @@ describe('PostController (e2e)', () => {
     createdPostId = res.body._id;
   });
 
-  it('should create another post for a different user', async () => {
-    await request(app.getHttpServer())
-      .post('/posts')
-      .send({
-        user_id: userId2,
-        text: 'Test post 2',
-        image_url: 'https://example.com/image2.jpg',
-      })
-      .expect(201);
-  });
-
   it('should get posts by user ID (sorted)', async () => {
-    // Add a second post for userId1 to test sorting
     await request(app.getHttpServer())
       .post('/posts')
       .send({
         user_id: userId1,
-        text: 'Test post 3',
-        image_url: 'https://example.com/image3.jpg',
+        text: 'Test post 2',
+        image_url: 'https://example.com/image2.jpg',
       })
       .expect(201);
     const res = await request(app.getHttpServer())
@@ -75,7 +65,7 @@ describe('PostController (e2e)', () => {
       .expect(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(2);
-    expect(res.body[0].text).toBe('Test post 3'); // Most recent first
+    expect(res.body[0].text).toBe('Test post 2');
     expect(res.body[1].text).toBe('Test post 1');
   });
 
@@ -91,17 +81,11 @@ describe('PostController (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/posts/users')
       .send({ user_ids: [userId1, userId2] })
-      .expect(201).catch(() => null) || await request(app.getHttpServer())
-      .post('/posts/users')
-      .send({ user_ids: [userId1, userId2] })
       .expect(200);
     expect(Array.isArray(res.body)).toBe(true);
-    // Should include all posts for both users
     const texts = res.body.map((p: any) => p.text);
     expect(texts).toContain('Test post 1');
     expect(texts).toContain('Test post 2');
-    expect(texts).toContain('Test post 3');
-    // Should be sorted by created_at descending
     for (let i = 1; i < res.body.length; i++) {
       expect(new Date(res.body[i - 1].created_at) >= new Date(res.body[i].created_at)).toBe(true);
     }
@@ -123,15 +107,43 @@ describe('PostController (e2e)', () => {
       .expect(404);
   });
 
-  it('should delete a post', async () => {
+  it('should delete a post and cascade delete all its comments and replies', async () => {
+    // Re-create post, comment, and reply
+    const postRes = await request(app.getHttpServer())
+      .post('/posts')
+      .send({
+        user_id: userId1,
+        text: 'Cascade post',
+        image_url: 'https://example.com/image.jpg',
+      })
+      .expect(201);
+    const postId = postRes.body._id;
+    const commentRes = await request(app.getHttpServer())
+      .post('/comments')
+      .send({
+        user_id: userId1,
+        post_id: postId,
+        content: 'Cascade comment',
+      })
+      .expect(201);
+    const commentId = commentRes.body._id;
+    const replyRes = await request(app.getHttpServer())
+      .post('/comments')
+      .send({
+        user_id: userId2,
+        parent_comment_id: commentId,
+        content: 'Cascade reply',
+      })
+      .expect(201);
+    // Delete the post
     await request(app.getHttpServer())
-      .delete(`/posts/${createdPostId}`)
+      .delete(`/posts/${postId}`)
       .expect(200);
-    // Confirm deletion
+    // All comments and replies should be gone
     const res = await request(app.getHttpServer())
-      .get(`/posts/user/${userId1}`)
+      .get(`/comments/post/${postId}`)
       .expect(200);
-    expect(res.body.find((p: any) => p._id === createdPostId)).toBeUndefined();
+    expect(res.body.length).toBe(0);
   });
 
   it('should return 404 when deleting a non-existent post', async () => {

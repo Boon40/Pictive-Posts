@@ -25,4 +25,4 @@ export class CommentController {
   async getCommentsByPostId(@Param('postId') postId: string) {
     return this.commentService.getCommentsByPostId(postId);
   }
-}
+} 

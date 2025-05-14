@@ -5,6 +5,7 @@ import { CommentSchema } from './comment/models/models';
 import { PostLikeSchema } from './post-like/models/models';
 import { CommentLikeSchema } from './comment-like/models/models';
 import { PostModule } from './post/post.module';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PostModule } from './post/post.module';
       { name: 'CommentLike', schema: CommentLikeSchema },
     ]),
     PostModule,
+    CommentModule,
   ],
 })
 export class AppModule {} 
