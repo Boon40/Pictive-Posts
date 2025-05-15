@@ -42,4 +42,17 @@ export class CommentRepository {
   async deleteRepliesByParentCommentId(parentCommentId: string) {
     return this.commentModel.deleteMany({ parent_comment_id: parentCommentId }).exec();
   }
+
+  async getAllCommentIdsByPostId(postId: string) {
+    const comments = await this.commentModel.find({ post_id: postId }).exec();
+    const ids = comments.map((c: any) => c._id);
+    // Get all replies to these comments
+    const replies = await this.commentModel.find({ parent_comment_id: { $in: ids } }).exec();
+    return ids.concat(replies.map((r: any) => r._id));
+  }
+
+  async getAllReplyIdsByParentCommentId(parentCommentId: string) {
+    const replies = await this.commentModel.find({ parent_comment_id: parentCommentId }).exec();
+    return replies.map((r: any) => r._id);
+  }
 }

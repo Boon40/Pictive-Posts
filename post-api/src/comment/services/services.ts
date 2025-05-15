@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { CommentRepository } from '../repositories/repositories';
 import { PostRepository } from '../../post/repositories/repositories';
+import { LikeRepository } from '../../like/repositories/repositories';
 
 @Injectable()
 export class CommentService {
   constructor(
     private readonly commentRepository: CommentRepository,
     @Inject(forwardRef(() => PostRepository)) private readonly postRepository: PostRepository,
+    @Inject(forwardRef(() => LikeRepository)) private readonly likeRepository: LikeRepository,
   ) {}
 
   async createComment(data: any) {
@@ -31,10 +33,22 @@ export class CommentService {
   }
 
   async deleteComment(commentId: string) {
-    // Delete the comment
-    const deleted = await this.commentRepository.deleteComment(commentId);
-    // Cascade delete: delete all replies to this comment
+    // Get all reply IDs first
+    const replyIds = await this.commentRepository.getAllReplyIdsByParentCommentId(commentId);
+    
+    // Delete all likes for all replies first
+    for (const replyId of replyIds) {
+      await this.likeRepository.deleteLikesByCommentId(replyId);
+    }
+    
+    // Delete all replies
     await this.commentRepository.deleteRepliesByParentCommentId(commentId);
+    
+    // Delete all likes for this comment
+    await this.likeRepository.deleteLikesByCommentId(commentId);
+    
+    // Finally delete the comment
+    const deleted = await this.commentRepository.deleteComment(commentId);
     return deleted;
   }
 

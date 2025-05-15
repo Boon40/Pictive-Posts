@@ -147,26 +147,65 @@ describe('Comment Features (e2e)', () => {
     expect(res.body[0].replies.length).toBe(0);
   });
 
-  it('should delete a comment and cascade delete its replies', async () => {
-    // Re-create a reply
+  it('should delete a comment and cascade delete its replies and all likes for them', async () => {
+    // Create post
+    const postRes = await request(app.getHttpServer())
+      .post('/posts')
+      .send({
+        user_id: userId1,
+        text: 'Cascade post for comment',
+        image_url: 'https://example.com/image1.jpg',
+      })
+      .expect(201);
+    const postId = postRes.body._id;
+    // Create comment
+    const commentRes = await request(app.getHttpServer())
+      .post('/comments')
+      .send({
+        user_id: userId1,
+        post_id: postId,
+        content: 'Cascade comment',
+      })
+      .expect(201);
+    const commentId = commentRes.body._id;
+    // Create reply
     const replyRes = await request(app.getHttpServer())
       .post('/comments')
       .send({
         user_id: userId2,
-        parent_comment_id: createdCommentId,
-        content: 'Reply to comment',
+        parent_comment_id: commentId,
+        content: 'Cascade reply',
       })
       .expect(201);
     const replyId = replyRes.body._id;
-    // Delete the parent comment
+    // Like the comment
     await request(app.getHttpServer())
-      .delete(`/comments/${createdCommentId}`)
+      .post('/likes')
+      .send({ user_id: userId1, comment_id: commentId })
+      .expect(201);
+    // Like the reply
+    await request(app.getHttpServer())
+      .post('/likes')
+      .send({ user_id: userId2, comment_id: replyId })
+      .expect(201);
+    // Delete the comment
+    await request(app.getHttpServer())
+      .delete(`/comments/${commentId}`)
       .expect(200);
-    // Both parent and reply should be gone
-    const res = await request(app.getHttpServer())
-      .get(`/comments/post/${createdPostId}`)
+    // Both comment and reply should be gone
+    const commentsRes = await request(app.getHttpServer())
+      .get(`/comments/post/${postId}`)
       .expect(200);
-    expect(res.body.length).toBe(0);
+    expect(commentsRes.body.length).toBe(0);
+    // All likes for comment and reply should be gone
+    const commentLikes = await request(app.getHttpServer())
+      .get(`/likes/comment/${commentId}`)
+      .expect(200);
+    expect(commentLikes.body.length).toBe(0);
+    const replyLikes = await request(app.getHttpServer())
+      .get(`/likes/comment/${replyId}`)
+      .expect(200);
+    expect(replyLikes.body.length).toBe(0);
   });
 
   it('should return 404 when deleting a non-existent comment', async () => {

@@ -2,10 +2,9 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PostSchema } from './post/models/models';
 import { CommentSchema } from './comment/models/models';
-import { PostLikeSchema } from './post-like/models/models';
-import { CommentLikeSchema } from './comment-like/models/models';
 import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
+import { LikeModule } from './like/like.module';
 
 @Module({
   imports: [
@@ -13,11 +12,10 @@ import { CommentModule } from './comment/comment.module';
     MongooseModule.forFeature([
       { name: 'Post', schema: PostSchema },
       { name: 'Comment', schema: CommentSchema },
-      { name: 'PostLike', schema: PostLikeSchema },
-      { name: 'CommentLike', schema: CommentLikeSchema },
     ]),
     PostModule,
     CommentModule,
+    LikeModule,
   ],
 })
 export class AppModule {} 

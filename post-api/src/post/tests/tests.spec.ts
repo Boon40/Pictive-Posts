@@ -107,8 +107,8 @@ describe('Post Features (e2e)', () => {
       .expect(404);
   });
 
-  it('should delete a post and cascade delete all its comments and replies', async () => {
-    // Re-create post, comment, and reply
+  it('should delete a post and cascade delete all its comments, replies, and all likes for them', async () => {
+    // Create post
     const postRes = await request(app.getHttpServer())
       .post('/posts')
       .send({
@@ -118,6 +118,7 @@ describe('Post Features (e2e)', () => {
       })
       .expect(201);
     const postId = postRes.body._id;
+    // Create comment
     const commentRes = await request(app.getHttpServer())
       .post('/comments')
       .send({
@@ -127,6 +128,7 @@ describe('Post Features (e2e)', () => {
       })
       .expect(201);
     const commentId = commentRes.body._id;
+    // Create reply
     const replyRes = await request(app.getHttpServer())
       .post('/comments')
       .send({
@@ -135,15 +137,44 @@ describe('Post Features (e2e)', () => {
         content: 'Cascade reply',
       })
       .expect(201);
+    const replyId = replyRes.body._id;
+    // Like the post
+    await request(app.getHttpServer())
+      .post('/likes')
+      .send({ user_id: userId1, post_id: postId })
+      .expect(201);
+    // Like the comment
+    await request(app.getHttpServer())
+      .post('/likes')
+      .send({ user_id: userId1, comment_id: commentId })
+      .expect(201);
+    // Like the reply
+    await request(app.getHttpServer())
+      .post('/likes')
+      .send({ user_id: userId2, comment_id: replyId })
+      .expect(201);
     // Delete the post
     await request(app.getHttpServer())
       .delete(`/posts/${postId}`)
       .expect(200);
     // All comments and replies should be gone
-    const res = await request(app.getHttpServer())
+    const commentsRes = await request(app.getHttpServer())
       .get(`/comments/post/${postId}`)
       .expect(200);
-    expect(res.body.length).toBe(0);
+    expect(commentsRes.body.length).toBe(0);
+    // All likes for post, comment, and reply should be gone
+    const postLikes = await request(app.getHttpServer())
+      .get(`/likes/post/${postId}`)
+      .expect(200);
+    expect(postLikes.body.length).toBe(0);
+    const commentLikes = await request(app.getHttpServer())
+      .get(`/likes/comment/${commentId}`)
+      .expect(200);
+    expect(commentLikes.body.length).toBe(0);
+    const replyLikes = await request(app.getHttpServer())
+      .get(`/likes/comment/${replyId}`)
+      .expect(200);
+    expect(replyLikes.body.length).toBe(0);
   });
 
   it('should return 404 when deleting a non-existent post', async () => {
