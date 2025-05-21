@@ -21,41 +21,91 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# Post API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This is a NestJS-based API service for managing posts. It uses MongoDB as its database.
 
-## Project setup
+## Prerequisites
 
-```bash
-$ npm install
-```
+- Node.js (v18 or later)
+- npm (comes with Node.js)
+- Docker and Docker Compose (for containerized setup)
+- MongoDB (if running locally without Docker)
 
-## Compile and run the project
+## Running the API locally
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
+### 1. Install Dependencies
 
 ```bash
-# unit tests
-$ npm run test
+# Navigate to the project directory
+cd post-api
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Install dependencies
+npm install
 ```
+
+### 2. Environment Setup
+
+Create a `.env` file in the root directory with the following variables:
+```
+MONGODB_URI=mongodb://localhost:27017/posts
+PORT=3001
+```
+
+### 3. Start the Application
+
+```bash
+# Development mode with hot-reload
+npm run start:dev
+
+# Production mode
+npm run build
+npm run start:prod
+```
+
+The API will be available at `http://localhost:3001`
+
+## Running database with Docker
+
+```bash
+# Pull and run MongoDB container
+docker run -d \
+  --name mongodb \
+  -p 27017:27017 \
+  -e MONGO_INITDB_DATABASE=posts \
+  mongo:latest
+```
+
+## Running API and database with Docker
+
+1. Use the provided `docker-compose.yml` file in the root directory
+2. Start the services:
+
+```bash
+# Start the services in detached mode (runs in the background)
+docker-compose up -d
+
+# To stop and remove the containers, networks, and volumes
+docker-compose down
+```
+
+The API will be available at `http://localhost:3001`
+
+## API Endpoints
+
+[Add your API endpoints documentation here]
+
+## Development
+
+### Available Scripts
+
+- `npm run build` - Build the application
+- `npm run start:dev` - Start in development mode with hot-reload
+- `npm run start:prod` - Start in production mode
+- `npm run test` - Run unit tests
+- `npm run test:e2e` - Run end-to-end tests
+- `npm run lint` - Lint the codebase
+- `npm run format` - Format the code using Prettier
 
 ## Deployment
 
