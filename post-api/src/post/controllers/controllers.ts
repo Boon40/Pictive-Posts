@@ -1,11 +1,26 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Post, UsePipes, ValidationPipe, HttpCode } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Post, UsePipes, ValidationPipe, HttpCode, Query, Logger } from '@nestjs/common';
 import { PostService } from '../services/services';
 import { CreatePostDto } from '../DTOs/DTOs';
 import { isValidObjectId } from 'mongoose';
 
 @Controller('posts')
 export class PostController {
+  private readonly logger = new Logger(PostController.name);
+
   constructor(private readonly postService: PostService) {}
+
+  @Get()
+  async getPosts(@Query('page') page: number = 1, @Query('limit') limit: number = 10) {
+    this.logger.debug(`Getting posts with page=${page}, limit=${limit}`);
+    try {
+      const result = await this.postService.getPosts(page, limit);
+      this.logger.debug(`Found ${result.posts.length} posts`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error getting posts: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true }))

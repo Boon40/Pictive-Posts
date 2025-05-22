@@ -1,9 +1,25 @@
-import { Schema } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
-export const PostSchema = new Schema({
-  _id: { type: String, required: true },
-  user_id: { type: String, required: true },
-  text: { type: String, required: true },
-  image_url: { type: String },
-  created_at: { type: Date, default: Date.now },
-}); 
+@Schema()
+export class Post extends Document {
+  @Prop({ required: true })
+  declare _id: string;
+
+  @Prop({ required: true })
+  user_id: string;
+
+  @Prop({ required: true })
+  text: string;
+
+  @Prop()
+  image_url?: string;
+
+  @Prop({ default: Date.now })
+  created_at: Date;
+
+  @Prop({ default: Date.now })
+  updated_at: Date;
+}
+
+export const PostSchema = SchemaFactory.createForClass(Post); 
