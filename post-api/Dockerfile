@@ -4,13 +4,13 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY Pictive-Posts/post-api/package*.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY . .
+COPY Pictive-Posts/post-api/ ./
 
 # Build the application
 RUN npm run build
@@ -20,8 +20,11 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install wget for health checks
+RUN apk add --no-cache wget
+
 # Copy package files
-COPY package*.json ./
+COPY Pictive-Posts/post-api/package*.json ./
 
 # Install production dependencies only
 RUN npm install --only=production
