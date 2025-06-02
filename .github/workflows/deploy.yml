@@ -1,0 +1,101 @@
+name: Pictive Posts API Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Pictive-Posts/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Pictive-Posts/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/pictive-posts
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+          sudo systemctl start docker
+          npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build Docker image
+        run: |
+          docker build -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} .
+          docker build -t $REGISTRY/$IMAGE_NAME:latest .
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Docker image
+        run: |
+          docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+  deploy:
+    name: Deploy
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up kubeconfig
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Update the deployment with the new image
+          kubectl set image deployment/pictive-posts \
+            pictive-posts=$REGISTRY/$IMAGE_NAME:${{ github.sha }} \
+            -n pictive
+
+          # Wait for rollout to complete
+          kubectl rollout status deployment/pictive-posts -n pictive
+
+      - name: Verify deployment
+        run: |
+          # Check if pods are running
+          kubectl get pods -n pictive -l app=pictive-posts
+          
+          # Check if service is accessible
+          kubectl get service pictive-posts-service -n pictive 
