@@ -13,7 +13,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/pictive-posts
+  IMAGE_NAME: ${{ github.repository_owner }}/pictive-posts
   MONGODB_URI: mongodb://localhost:27017/posts
   PORT: 3001
 
