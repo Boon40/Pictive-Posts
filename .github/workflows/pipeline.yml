@@ -14,6 +14,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/pictive-posts
+  MONGODB_URI: ${{ secrets.MONGODB_URI }}
+  PORT: 3001
 
 jobs:
   validate:
@@ -30,13 +32,27 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'post-api/package-lock.json'
 
-      - name: Install dependencies
-        working-directory: post-api
+      - name: Install Docker
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc
+          sudo apt-get install -y \
+            apt-transport-https \
+            ca-certificates \
+            curl \
+            gnupg \
+            lsb-release
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
           sudo systemctl start docker
-          npm install
+
+      - name: Install dependencies
+        working-directory: post-api
+        run: npm install
 
       - name: Run linting
         working-directory: post-api
@@ -45,6 +61,10 @@ jobs:
       - name: Run tests
         working-directory: post-api
         run: npm run test
+
+      - name: Run e2e tests
+        working-directory: post-api
+        run: npm run test:e2e
 
       - name: Build application
         working-directory: post-api
