@@ -13,7 +13,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/pictive-posts
   MONGODB_URI: mongodb://localhost:27017/posts
   PORT: 3001
 
@@ -57,6 +56,9 @@ jobs:
     needs: validate
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -83,7 +85,7 @@ jobs:
         working-directory: post-api
         run: |
           # Convert repository owner to lowercase
-          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_OWNER=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
           docker build -t $REGISTRY/$REPO_OWNER/pictive-posts:${{ github.sha }} .
           docker build -t $REGISTRY/$REPO_OWNER/pictive-posts:latest .
 
@@ -97,7 +99,7 @@ jobs:
       - name: Push Docker image
         run: |
           # Convert repository owner to lowercase
-          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_OWNER=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
           docker push $REGISTRY/$REPO_OWNER/pictive-posts:${{ github.sha }}
           docker push $REGISTRY/$REPO_OWNER/pictive-posts:latest
 
