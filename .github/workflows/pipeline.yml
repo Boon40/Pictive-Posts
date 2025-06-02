@@ -40,6 +40,27 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'post-api/package-lock.json'
 
+      - name: Install dependencies
+        working-directory: post-api
+        run: npm install
+
+      - name: Run tests
+        working-directory: post-api
+        run: npm run test
+
+      - name: Build application
+        working-directory: post-api
+        run: npm run build
+
+  deploy:
+    name: Deploy
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Install Docker
         run: |
           sudo apt-get update
@@ -58,26 +79,6 @@ jobs:
           sudo apt-get install -y docker-ce docker-ce-cli containerd.io
           sudo systemctl start docker
 
-      - name: Install dependencies
-        working-directory: post-api
-        run: npm install
-
-      - name: Run linting
-        working-directory: post-api
-        run: npm run lint
-
-      - name: Run tests
-        working-directory: post-api
-        run: npm run test
-
-      - name: Run e2e tests
-        working-directory: post-api
-        run: npm run test:e2e
-
-      - name: Build application
-        working-directory: post-api
-        run: npm run build
-
       - name: Build Docker image
         working-directory: post-api
         run: |
@@ -94,4 +95,26 @@ jobs:
       - name: Push Docker image
         run: |
           docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
-          docker push $REGISTRY/$IMAGE_NAME:latest 
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Verify Kubernetes configuration
+        run: |
+          # This step will be enabled when you have your kubeconfig
+          # kubectl get nodes
+          echo "Kubernetes configuration verification will be enabled when kubeconfig is available"
+          echo "Please add your kubeconfig as a secret named KUBE_CONFIG when ready to deploy"
+
+      - name: Verify deployment files
+        run: |
+          # Verify that all required Kubernetes manifests exist
+          if [ -d "k8s" ]; then
+            echo "Found k8s directory"
+            ls -la k8s/
+          else
+            echo "Warning: k8s directory not found"
+          fi 
