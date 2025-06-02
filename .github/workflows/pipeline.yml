@@ -34,6 +34,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker.io
           sudo systemctl start docker
+          # Generate package-lock.json if it doesn't exist
+          if [ ! -f "package-lock.json" ]; then
+            npm install --package-lock-only
+          fi
           npm ci
 
       - name: Run linting
