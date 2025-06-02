@@ -14,13 +14,21 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/pictive-posts
-  MONGODB_URI: ${{ secrets.MONGODB_URI }}
+  MONGODB_URI: mongodb://localhost:27017/posts
   PORT: 3001
 
 jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_DATABASE: posts
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -86,43 +94,4 @@ jobs:
       - name: Push Docker image
         run: |
           docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
-          docker push $REGISTRY/$IMAGE_NAME:latest
-
-  deploy:
-    name: Deploy
-    needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Set up kubeconfig
-        uses: azure/k8s-set-context@v3
-        with:
-          kubeconfig: ${{ secrets.KUBE_CONFIG }}
-
-      - name: Deploy to Kubernetes
-        run: |
-          # Update the deployment with the new image
-          kubectl set image deployment/pictive-posts \
-            pictive-posts=$REGISTRY/$IMAGE_NAME:${{ github.sha }} \
-            -n pictive
-
-          # Wait for rollout to complete
-          kubectl rollout status deployment/pictive-posts -n pictive
-
-      - name: Verify deployment
-        run: |
-          # Check if pods are running
-          kubectl get pods -n pictive -l app=pictive-posts
-          
-          # Check if service is accessible
-          kubectl get service pictive-posts-service -n pictive 
+          docker push $REGISTRY/$IMAGE_NAME:latest 
