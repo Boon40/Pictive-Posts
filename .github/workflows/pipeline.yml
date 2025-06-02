@@ -28,28 +28,30 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: 'Pictive-Posts/package-lock.json'
 
       - name: Install dependencies
+        working-directory: Pictive-Posts
         run: |
           sudo apt-get update
           sudo apt-get install -y docker.io
           sudo systemctl start docker
-          # Generate package-lock.json if it doesn't exist
-          if [ ! -f "package-lock.json" ]; then
-            npm install --package-lock-only
-          fi
-          npm ci
+          npm install
 
       - name: Run linting
+        working-directory: Pictive-Posts
         run: npm run lint
 
       - name: Run tests
+        working-directory: Pictive-Posts
         run: npm run test
 
       - name: Build application
+        working-directory: Pictive-Posts
         run: npm run build
 
       - name: Build Docker image
+        working-directory: Pictive-Posts
         run: |
           docker build -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} .
           docker build -t $REGISTRY/$IMAGE_NAME:latest .
