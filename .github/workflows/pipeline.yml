@@ -99,25 +99,18 @@ jobs:
 
       - name: Deploy to AKS
         run: |
-          # Apply the deployment and wait for it to be ready
+          # Apply the deployment
+          echo "Applying deployment configuration..."
           kubectl apply -f k8s/posts-deployment.yaml
           
-          # Wait for the deployment to be created
-          echo "Waiting for deployment to be created..."
+          # Wait for the deployment to be ready
+          echo "Waiting for deployment to be ready..."
           sleep 10
           
-          # Verify deployment exists
-          if ! kubectl get deployment pictive-posts -n pictive; then
-            echo "Deployment not found, creating it..."
-            kubectl create -f k8s/posts-deployment.yaml
-          fi
-          
-          # Update the image in the deployment
+          # Force update the deployment
           echo "Updating deployment image..."
-          kubectl set image deployment/pictive-posts \
-            pictive-posts=${{ env.ACR_NAME }}.azurecr.io/pictive-posts:${{ github.sha }} \
-            -n pictive
-
+          kubectl patch deployment pictive-posts -n pictive -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"pictive-posts\",\"image\":\"${{ env.ACR_NAME }}.azurecr.io/pictive-posts:${{ github.sha }}\"}]}}}}"
+          
           # Verify deployment
           echo "Verifying deployment..."
           kubectl rollout status deployment/pictive-posts -n pictive
@@ -125,4 +118,8 @@ jobs:
           # Show deployment status
           echo "Deployment status:"
           kubectl get pods -n pictive
-          kubectl get services -n pictive 
+          kubectl get services -n pictive
+          
+          # Show deployment details
+          echo "Deployment details:"
+          kubectl describe deployment pictive-posts -n pictive 
