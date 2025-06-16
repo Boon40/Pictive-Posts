@@ -88,7 +88,7 @@ jobs:
       - name: Create Kubernetes namespace and secrets
         run: |
           # Create namespace
-          kubectl create namespace pictive || true
+          kubectl create namespace pictive --dry-run=client -o yaml | kubectl apply -f -
           
           # Create secrets
           kubectl create secret generic posts-db-secret \
@@ -150,7 +150,7 @@ jobs:
                   resources:
                     requests:
                       memory: "512Mi"
-                      cpu: "250m"
+                      cpu: "100m"
                     limits:
                       memory: "1Gi"
                       cpu: "500m"
@@ -188,12 +188,12 @@ jobs:
           metadata:
             name: pictive-posts-service
           spec:
+            type: LoadBalancer
             selector:
               app: pictive-posts
             ports:
             - port: 3001
               targetPort: 3001
-            type: ClusterIP
           ---
           apiVersion: autoscaling/v2
           kind: HorizontalPodAutoscaler
@@ -217,7 +217,7 @@ jobs:
           
           # Wait for the deployment to be ready
           echo "Waiting for deployment to be ready..."
-          sleep 10
+          sleep 30
           
           # Verify deployment
           echo "Verifying deployment..."
@@ -238,4 +238,21 @@ jobs:
           
           # Check pod logs
           echo "Checking pod logs..."
-          kubectl logs -l app=pictive-posts -n pictive 
+          kubectl logs -l app=pictive-posts -n pictive
+          
+          # Get the external IP
+          echo "Getting external IP..."
+          EXTERNAL_IP=$(kubectl get service pictive-posts-service -n pictive -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "External IP: $EXTERNAL_IP"
+          
+          # Wait for the external IP to be assigned
+          echo "Waiting for external IP to be assigned..."
+          while [ -z "$EXTERNAL_IP" ]; do
+            sleep 10
+            EXTERNAL_IP=$(kubectl get service pictive-posts-service -n pictive -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            echo "External IP: $EXTERNAL_IP"
+          done
+          
+          # Test the API
+          echo "Testing API..."
+          curl -v http://$EXTERNAL_IP:3001/api/health 
