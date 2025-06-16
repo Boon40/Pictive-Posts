@@ -109,7 +109,7 @@ jobs:
           
           # Apply the deployment
           echo "Applying deployment configuration..."
-          kubectl apply -f k8s/posts-deployment.yaml
+          kubectl apply -f Pictive-Posts/k8s/posts-deployment.yaml
           
           # Wait for the deployment to be ready
           echo "Waiting for deployment to be ready..."
@@ -132,4 +132,12 @@ jobs:
           
           # Show deployment details
           echo "Deployment details:"
-          kubectl describe deployment pictive-posts -n pictive 
+          kubectl describe deployment pictive-posts -n pictive
+          
+          # Verify pods are running
+          echo "Verifying pods..."
+          kubectl get pods -n pictive -o wide
+          
+          # Check pod logs
+          echo "Checking pod logs..."
+          kubectl logs -l app=pictive-posts -n pictive 
