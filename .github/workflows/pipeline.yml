@@ -99,6 +99,14 @@ jobs:
 
       - name: Deploy to AKS
         run: |
+          # Create namespace if it doesn't exist
+          echo "Ensuring namespace exists..."
+          kubectl create namespace pictive --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Delete existing deployment if it exists
+          echo "Cleaning up existing deployment..."
+          kubectl delete deployment pictive-posts -n pictive --ignore-not-found=true
+          
           # Apply the deployment
           echo "Applying deployment configuration..."
           kubectl apply -f k8s/posts-deployment.yaml
@@ -107,9 +115,11 @@ jobs:
           echo "Waiting for deployment to be ready..."
           sleep 10
           
-          # Force update the deployment
+          # Update the deployment image
           echo "Updating deployment image..."
-          kubectl patch deployment pictive-posts -n pictive -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"pictive-posts\",\"image\":\"${{ env.ACR_NAME }}.azurecr.io/pictive-posts:${{ github.sha }}\"}]}}}}"
+          kubectl set image deployment/pictive-posts \
+            pictive-posts=${{ env.ACR_NAME }}.azurecr.io/pictive-posts:${{ github.sha }} \
+            -n pictive
           
           # Verify deployment
           echo "Verifying deployment..."
