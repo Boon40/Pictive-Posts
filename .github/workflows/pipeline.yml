@@ -114,6 +114,7 @@ jobs:
           kind: Deployment
           metadata:
             name: pictive-posts
+            namespace: pictive
             labels:
               app: pictive-posts
           spec:
@@ -187,6 +188,7 @@ jobs:
           kind: Service
           metadata:
             name: pictive-posts-service
+            namespace: pictive
           spec:
             type: LoadBalancer
             selector:
@@ -199,6 +201,7 @@ jobs:
           kind: HorizontalPodAutoscaler
           metadata:
             name: pictive-posts-hpa
+            namespace: pictive
           spec:
             scaleTargetRef:
               apiVersion: apps/v1
@@ -225,7 +228,7 @@ jobs:
           
           # Get deployment name
           echo "Getting deployment name..."
-          DEPLOYMENT_NAME=$(kubectl get deployments -n pictive -o jsonpath='{.items[0].metadata.name}')
+          DEPLOYMENT_NAME=$(kubectl get deployments -n pictive -o jsonpath='{.items[0].metadata.name}' || echo "pictive-posts")
           echo "Deployment name: $DEPLOYMENT_NAME"
           
           # Verify deployment
