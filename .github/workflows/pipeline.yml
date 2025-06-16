@@ -107,19 +107,117 @@ jobs:
           echo "Cleaning up existing deployment..."
           kubectl delete deployment pictive-posts -n pictive --ignore-not-found=true
           
-          # Apply the deployment
-          echo "Applying deployment configuration..."
-          kubectl apply -f Pictive-Posts/k8s/posts-deployment.yaml
+          # Create deployment manifest
+          echo "Creating deployment manifest..."
+          cat <<EOF | kubectl create -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: pictive-posts
+            labels:
+              app: pictive-posts
+          spec:
+            replicas: 2
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0
+            selector:
+              matchLabels:
+                app: pictive-posts
+            template:
+              metadata:
+                labels:
+                  app: pictive-posts
+              spec:
+                containers:
+                - name: pictive-posts
+                  image: ${{ env.ACR_LOGIN_SERVER }}/pictive-posts:${{ github.sha }}
+                  ports:
+                  - containerPort: 3001
+                  env:
+                  - name: MONGO_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: posts-db-secret
+                        key: mongo-url
+                  - name: MONGO_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: posts-db-secret
+                        key: mongo-password
+                  resources:
+                    requests:
+                      memory: "512Mi"
+                      cpu: "250m"
+                    limits:
+                      memory: "1Gi"
+                      cpu: "500m"
+                  livenessProbe:
+                    httpGet:
+                      path: /api/health
+                      port: 3001
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+                    timeoutSeconds: 5
+                    failureThreshold: 3
+                  readinessProbe:
+                    httpGet:
+                      path: /api/health
+                      port: 3001
+                    initialDelaySeconds: 15
+                    periodSeconds: 10
+                    timeoutSeconds: 5
+                    failureThreshold: 3
+                  startupProbe:
+                    httpGet:
+                      path: /api/health
+                      port: 3001
+                    initialDelaySeconds: 15
+                    periodSeconds: 10
+                    timeoutSeconds: 5
+                    failureThreshold: 30
+                  lifecycle:
+                    preStop:
+                      exec:
+                        command: ["/bin/sh", "-c", "sleep 10"]
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: pictive-posts-service
+          spec:
+            selector:
+              app: pictive-posts
+            ports:
+            - port: 3001
+              targetPort: 3001
+            type: ClusterIP
+          ---
+          apiVersion: autoscaling/v2
+          kind: HorizontalPodAutoscaler
+          metadata:
+            name: pictive-posts-hpa
+          spec:
+            scaleTargetRef:
+              apiVersion: apps/v1
+              kind: Deployment
+              name: pictive-posts
+            minReplicas: 2
+            maxReplicas: 5
+            metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                target:
+                  type: Utilization
+                  averageUtilization: 70
+          EOF
           
           # Wait for the deployment to be ready
           echo "Waiting for deployment to be ready..."
           sleep 10
-          
-          # Update the deployment image
-          echo "Updating deployment image..."
-          kubectl set image deployment/pictive-posts \
-            pictive-posts=${{ env.ACR_LOGIN_SERVER }}/pictive-posts:${{ github.sha }} \
-            -n pictive
           
           # Verify deployment
           echo "Verifying deployment..."
