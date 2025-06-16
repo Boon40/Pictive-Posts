@@ -85,9 +85,21 @@ jobs:
             --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name ${{ env.AKS_NAME }}
 
+      - name: Create Kubernetes namespace and secrets
+        run: |
+          # Create namespace
+          kubectl create namespace pictive || true
+          
+          # Create secrets
+          kubectl create secret generic posts-db-secret \
+            --namespace pictive \
+            --from-literal=mongo-url='${{ secrets.MONGO_URL }}' \
+            --from-literal=mongo-password='${{ secrets.MONGO_PASSWORD }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy to AKS
         run: |
-          # Update the deployment with the new image
+          # Apply the deployment
           kubectl apply -f k8s/posts-deployment.yaml
           
           # Update the image in the deployment
