@@ -219,9 +219,18 @@ jobs:
           echo "Waiting for deployment to be ready..."
           sleep 30
           
+          # Show all resources
+          echo "Showing all resources..."
+          kubectl get all -n pictive
+          
+          # Get deployment name
+          echo "Getting deployment name..."
+          DEPLOYMENT_NAME=$(kubectl get deployments -n pictive -o jsonpath='{.items[0].metadata.name}')
+          echo "Deployment name: $DEPLOYMENT_NAME"
+          
           # Verify deployment
           echo "Verifying deployment..."
-          kubectl rollout status deployment/pictive-posts -n pictive
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n pictive
           
           # Show deployment status
           echo "Deployment status:"
@@ -230,7 +239,7 @@ jobs:
           
           # Show deployment details
           echo "Deployment details:"
-          kubectl describe deployment pictive-posts -n pictive
+          kubectl describe deployment $DEPLOYMENT_NAME -n pictive
           
           # Verify pods are running
           echo "Verifying pods..."
