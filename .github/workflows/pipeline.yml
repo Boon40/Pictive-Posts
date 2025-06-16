@@ -99,13 +99,30 @@ jobs:
 
       - name: Deploy to AKS
         run: |
-          # Apply the deployment
+          # Apply the deployment and wait for it to be ready
           kubectl apply -f k8s/posts-deployment.yaml
           
+          # Wait for the deployment to be created
+          echo "Waiting for deployment to be created..."
+          sleep 10
+          
+          # Verify deployment exists
+          if ! kubectl get deployment pictive-posts -n pictive; then
+            echo "Deployment not found, creating it..."
+            kubectl create -f k8s/posts-deployment.yaml
+          fi
+          
           # Update the image in the deployment
+          echo "Updating deployment image..."
           kubectl set image deployment/pictive-posts \
             pictive-posts=${{ env.ACR_NAME }}.azurecr.io/pictive-posts:${{ github.sha }} \
             -n pictive
 
           # Verify deployment
-          kubectl rollout status deployment/pictive-posts -n pictive 
+          echo "Verifying deployment..."
+          kubectl rollout status deployment/pictive-posts -n pictive
+          
+          # Show deployment status
+          echo "Deployment status:"
+          kubectl get pods -n pictive
+          kubectl get services -n pictive 
